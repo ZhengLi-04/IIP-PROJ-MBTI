@@ -24,7 +24,7 @@ st.markdown(
         margin-top: calc(-60px + 0.25vw) !important;
     }
     .mbti-page-title {
-        font-size: calc(20px + 0.25vw) !important;
+        font-size: calc(16px + 0.25vw) !important;
         margin-bottom: calc(8px + 0.25vw) !important;
         font-weight: bold !important;
     }
