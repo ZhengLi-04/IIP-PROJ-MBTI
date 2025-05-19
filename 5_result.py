@@ -36,9 +36,10 @@ st.markdown(
         margin-bottom: calc(8px + 0.25vw) !important;
         font-weight: bold !important;
     }
-    .mbti-page-text {
+    .result-page-text {
         font-size: calc(12px + 0.25vw) !important;
         margin-bottom: calc(0px + 0.25vw) !important;
+        margin: 0 10px !important;
     }
     
     /* 卡片容器样式 */
@@ -93,25 +94,113 @@ st.markdown('<p class="mbti-page-bigtitle">结果解读</p>', unsafe_allow_html=
 st.caption("🚀 MBTI 是一种基于荣格心理类型理论发展而来的性格测评工具，通过分析个人在四个维度上的偏好，将人格划分为十六种类型。")
 
 
-# 显示用户的 MBTI 类型
+# ... 保持原有样式代码不变 ...
+
+# ============ 新增数据结构 ============
+PERSONALITY_DATA = {
+    "INTJ": {
+        "tagline": "富有想象力和战略性思维，一切皆在计划之中。",  # 一句话评价
+        "description": """
+            INTJ是一种兼具内向、直觉、思考和判断特质的人格类型。这些深思熟虑的策略家热衷于完善生活中的细节，将创造力和理性运用到他们所做的一切事情上。他们的内心世界通常是一个私密且复杂的领域。<br><br>
+            具有INTJ人格类型的人是智力好奇心旺盛的个体，对知识有着根深蒂固的渴望。INTJ通常重视创造性智慧、直截了当的理性和自我提升。他们始终致力于增强智力能力，通常被一种强烈的渴望所驱使，想要掌握任何引起他们兴趣的话题。 <br><br>
+            INTJ逻辑性强且思维敏捷，他们以独立思考的能力而自豪.他们有一种非凡的洞察力，能够看穿虚伪和伪善。由于他们的大脑从不停歇，这些人格类型可能会难以找到能够跟上他们对周围一切进行不间断分析的人。但当他们找到欣赏他们强烈热情和思想深度的志同道合者时，INTJ会形成深刻且富有智力刺激的关系，这些关系对他们来说珍贵非常。 <br><br>
+        """, 
+        "quote": {"text": "思想构成了人的伟大。人只不过是一根芦苇，是自然界中最脆弱的东西，但他是一根会思考的芦苇。", "author": "布莱士·帕斯卡"},  # 名人名言
+        "strengths": ["理性主义", "博学多识", "独立自主","坚韧不拔", "好奇心旺盛", "独创性"],  # 优点
+        "weaknesses": ["傲慢", "忽视情感", "过度批判", "喜好争论","社交迟钝"],  # 缺点
+        "celebrities": [  # 名人列表（对应图片路径）
+            {"name": "弗里德里希·尼采", "img": "INTJ_celeb1"},
+            {"name": "米歇尔·奥巴马", "img": "INTJ_celeb2"},
+            {"name": "埃隆·马斯克", "img": "INTJ_celeb3"}
+        ]
+    },
+    # 在此补充其他15种类型的数据...
+}
+
+# ============ 新增展示函数 ============
+def show_personality_analysis(mbti_type):
+    data = PERSONALITY_DATA.get(mbti_type, {})
+    
+    with st.container():
+        # 顶部卡片 - Tagline + Quote
+        with st.container():
+            # 顶部卡片 - Tagline + Quote
+            st.markdown(f"""
+            <div class="mbti-card">
+                <p class="mbti-page-typetitle">🌟 {mbti_type} 人格特点</p>
+                <div style="border-bottom: 1px dashed #eee; margin: 15px 0;"></div>
+                <p class="mbti-page-title">🔖 个性标签</p>
+                <p class="result-page-text">{data.get('tagline', '')}</p>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin:20px 0;">
+                    <p class="result-page-text" style="font-style: italic;">"{data.get('quote', {}).get('text', '')}"</p>
+                    <p class="result-page-text" style="text-align: right; color: #666;">—— {data.get('quote', {}).get('author', '')}</p>
+                </div>
+            </div>  <!-- 添加闭合标签 -->
+            """, unsafe_allow_html=True)
+
+        # 类型描述（卡片外）
+        st.markdown(f'<p class="mbti-page-title" style="margin-top:30px;">📌 类型解析</p>', unsafe_allow_html=True)
+        st.markdown(f'<p class="result-page-text">{data.get("description", "")}</p>', unsafe_allow_html=True)
+
+        # 优点缺点分栏
+        col_sw, col_sw2 = st.columns(2)
+        with col_sw:
+            st.markdown(f"""
+            <div class="mbti-card">
+                <p class="mbti-page-title">✅ 核心优势</p>
+                <ul style="margin-left: 20px;">
+                    {''.join([f'<li class="result-page-text">{s}</li>' for s in data.get("strengths", [])])}
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_sw2:
+            st.markdown(f"""
+            <div class="mbti-card">
+                <p class="mbti-page-title">⚠️ 发展建议</p>
+                <ul style="margin-left: 20px;">
+                    {''.join([f'<li class="result-page-text">{w}</li>' for w in data.get("weaknesses", [])])}
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # 名人展示（三栏卡片）
+        st.markdown('<p class="mbti-page-title" style="margin-top:30px;">✨ 知名人物</p>', unsafe_allow_html=True)
+        celeb_cols = st.columns(3)
+        for i, celeb in enumerate(data.get("celebrities", [])):
+            with celeb_cols[i % 3]:
+                celeb_img = get_image_base64(f"images/{celeb['img']}.png")
+                st.markdown(f"""
+                <div class="mbti-card">
+                    <p class="result-page-text" style="text-align: center; font-weight:500;">{celeb['name']}</p>
+                    <div class="mbti-card-image">
+                        <img src="data:image/png;base64,{celeb_img}" style="width: 80%; border-radius: 10px;">
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+# ============ 在原有位置调用 ============
+# st.session_state.mbti_type = "INTJ"  # 示例类型，实际使用时应从会话状态中获取
 if 'mbti_type' in st.session_state:
     st.markdown(f'<p class="mbti-page-type">您的 MBTI 类型是：{st.session_state.mbti_type}</p>', unsafe_allow_html=True)
+    show_personality_analysis(st.session_state.mbti_type)  # 传入当前类型
 else:
     st.warning("未找到 MBTI 类型信息，请先进行测试。")
 
+# ... 保持原有底部导航代码不变 ...
+
 # st.markdown('<p class="mbti-page-title">📃 理论基础</p>', unsafe_allow_html=True)
 
-# st.markdown('<p class="mbti-page-text">MBTI，全称 Myers-Briggs Type Indicator，中文翻译为“迈尔斯-布里格斯类型指标”，是一种基于瑞士心理学家卡尔·荣格的心理类型理论发展出来的人格测评工具。最早由美国作家伊莎贝尔·布里格斯·迈尔斯和她的母亲凯瑟琳·库克·布里格斯在 20 世纪 40 年代编制而成。它主要用于测量和描述个人偏好和行为模式，帮助人们更好地理解自己的性格特点，并在职业、教育和人际关系等方面做出更好的决策。</p>', unsafe_allow_html=True)
+# st.markdown('<p class="result-page-text">MBTI，全称 Myers-Briggs Type Indicator，中文翻译为“迈尔斯-布里格斯类型指标”，是一种基于瑞士心理学家卡尔·荣格的心理类型理论发展出来的人格测评工具。最早由美国作家伊莎贝尔·布里格斯·迈尔斯和她的母亲凯瑟琳·库克·布里格斯在 20 世纪 40 年代编制而成。它主要用于测量和描述个人偏好和行为模式，帮助人们更好地理解自己的性格特点，并在职业、教育和人际关系等方面做出更好的决策。</p>', unsafe_allow_html=True)
 
 # st.divider()
 
 # st.markdown('<p class="mbti-page-title">📝 类别介绍</p>', unsafe_allow_html=True)
 
-# st.markdown('<p class="mbti-page-text">MBTI 通过四个维度——能量获得途径（外向 E 与内向 I）、认识世界（实感 S 与直觉 N）、判断事物（思维 T 与情感 F）以及生活态度（判断 J 与知觉 P）的组合，将人格划分为十六种可能的类型。这种划分不仅帮助人们更深入地了解自己的性格特征、价值观和行为习惯，还为人们提供了一个框架，以更好地理解和欣赏他人的差异。</p>', unsafe_allow_html=True)
+# st.markdown('<p class="result-page-text">MBTI 通过四个维度——能量获得途径（外向 E 与内向 I）、认识世界（实感 S 与直觉 N）、判断事物（思维 T 与情感 F）以及生活态度（判断 J 与知觉 P）的组合，将人格划分为十六种可能的类型。这种划分不仅帮助人们更深入地了解自己的性格特征、价值观和行为习惯，还为人们提供了一个框架，以更好地理解和欣赏他人的差异。</p>', unsafe_allow_html=True)
 
 # st.markdown('<p class="mbti-page-type">能量获得途径</p>', unsafe_allow_html=True)
 
-# st.markdown('<p class="mbti-page-text">这方面展示了我们如何与周围环境互动：</p>', unsafe_allow_html=True)
+# st.markdown('<p class="result-page-text">这方面展示了我们如何与周围环境互动：</p>', unsafe_allow_html=True)
 
 # col1, col2 = st.columns(2)
 
@@ -146,7 +235,7 @@ else:
 
 # st.markdown('<p class="mbti-page-type">信息感知方式</p>', unsafe_allow_html=True)
 
-# st.markdown('<p class="mbti-page-text">这个方面决定了我们如何看待世界以及如何处理信息：</p>', unsafe_allow_html=True)
+# st.markdown('<p class="result-page-text">这个方面决定了我们如何看待世界以及如何处理信息：</p>', unsafe_allow_html=True)
 
 # col3, col4 = st.columns(2)
 
@@ -180,7 +269,7 @@ else:
 
 # st.markdown('<p class="mbti-page-type">处理信息的决策方式</p>', unsafe_allow_html=True)
 
-# st.markdown('<p class="mbti-page-text">这个方面决定了我们做决定和应对情绪的方式：</p>', unsafe_allow_html=True)
+# st.markdown('<p class="result-page-text">这个方面决定了我们做决定和应对情绪的方式：</p>', unsafe_allow_html=True)
 
 # col5, col6 = st.columns(2)
 # with col5:
@@ -213,7 +302,7 @@ else:
 
 # st.markdown('<p class="mbti-page-type">与周围世界的接触方式</p>', unsafe_allow_html=True)
 
-# st.markdown('<p class="mbti-page-text">这个方面反映了我们对待工作、规划和决策的方式：</p>', unsafe_allow_html=True)
+# st.markdown('<p class="result-page-text">这个方面反映了我们对待工作、规划和决策的方式：</p>', unsafe_allow_html=True)
 
 # col7, col8 = st.columns(2)
 # with col7:
