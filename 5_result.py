@@ -285,7 +285,7 @@ PERSONALITY_DATA = {
         "celebrities": [
             {"name": "艾尔顿·约翰", "img": "ESFP_celeb1"},
             {"name": "玛丽莲·梦露", "img": "ESFP_celeb2"},
-            {"name": "杰米．奥利弗", "img": "ESFP_celeb3"}
+            {"name": "杰米·奥利弗", "img": "ESFP_celeb3"}
         ]
     }
 }

@@ -61,7 +61,7 @@ with st.sidebar:
     st.markdown('<p class="sidebar-info-text">MBTInsight 是一个基于文本的 MBTI 自动预测平台，运用前沿自然语言处理技术，通过分析输入文本的语言逻辑与表达习惯，快速精准输出人格类型结果，为用户自我认知、职业规划和社交互动提供专业参考。</p>', unsafe_allow_html=True)
     st.markdown('<p class="sidebar-info-text"></p>', unsafe_allow_html=True)
     st.markdown('<p class="sidebar-info-title">关于我们</p>', unsafe_allow_html=True)
-    st.markdown('<p class="sidebar-info-tiny">本项目由2025年《智能信息处理》课程第3组开发。<br>小组成员: 徐柯婷、李峥、唐宁琳。</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sidebar-info-tiny">本项目由 2025 年《智能信息处理》课程第 3 组开发。<br>小组成员: 徐柯婷、李峥、唐宁琳。</p>', unsafe_allow_html=True)
     st.markdown('<p class="sidebar-info-tiny">© MBTInsight 2025，保留一切权利。</p>', unsafe_allow_html=True)
 
 pages = {
