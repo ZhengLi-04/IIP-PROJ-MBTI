@@ -34,9 +34,6 @@ st.markdown(
     button[kind="header"] {
         display: none;
     }
-    * {
-        font-family: "PingFang SC", "Source Sans Pro", -apple-system, BlinkMacSystemFont, sans-serif !important;
-    }
 
     /* 响应式文本类 */
     .sidebar-info-title {

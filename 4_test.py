@@ -9,6 +9,10 @@ import re
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
+st.logo("full_logo.png", size="large")
+
+
+
 # 在文件开头添加中文检测函数
 def contains_chinese(text):
     for char in text:
@@ -25,6 +29,12 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def preprocess_text(text):
     text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
     text = re.sub(r'@\w+', '', text)
+
+    # 新增的预处理步骤
+    text = re.sub(r'[^\w\s\u4e00-\u9fff]', ' ', text)  # 只保留文字、数字和中文
+    text = re.sub(r'\d+', ' ', text)  # 移除数字
+    text = text.lower()  # 转换为小写
+    
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
@@ -233,6 +243,129 @@ st.markdown("""
 
 st.image("images/beamer.svg",use_container_width=True)
 
+
+# 首先定义维度全称的映射
+DIMENSION_NAMES = {
+    'I': 'Introverted',
+    'E': 'Extraverted',
+    'N': 'Intuition',
+    'S': 'Sensing',
+    'T': 'Thinking',
+    'F': 'Feeling',
+    'J': 'Judging',
+    'P': 'Perceiving'
+}
+
+# 定义每个维度的颜色
+DIMENSION_COLORS = {
+    'IE': ['#5996B1', '#5996B1'],  # 红色到青色
+    'NS': ['#DCB051', '#DCB051'],  # 薄荷绿到橙色
+    'TF': ['#54A177', '#54A177'],  # 绿色到粉色
+    'JP': ['#826396', '#826396']   # 珊瑚色到蓝色
+}
+
+# 更新样式定义
+st.markdown(
+    """
+    <style>
+    .dimension-container {
+        position: relative;
+        margin: 30px 0;
+        padding: 0 150px;  /* 为两侧文本留出空间 */
+    }
+    
+    .dimension-bar {
+        width: 100%;
+        height: 12px;
+        border-radius: 6px;
+        position: relative;
+    }
+    
+    .dimension-indicator {
+        width: 20px;
+        height: 20px;
+        background: white;
+        border: 3px solid;
+        border-radius: 50%;
+        position: absolute;
+        top: -4px;
+        transform: translateX(-50%);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        z-index: 2;
+    }
+    
+    .dimension-indicator:hover {
+        transform: translateX(-50%) scale(1.2);
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    
+    .dimension-label {
+    position: absolute;
+    font-size: 14px;
+    color: #2d3436;
+    width: auto;  /* 固定宽度 */
+    text-align: center;
+    top: 50%;  
+    transform: translateY(-50%);  /* 这里的引号有问题，需要修复 */
+    }
+
+    .dimension-label.left {
+        left: 30px;  /* 使用固定距离替代transform */
+        text-align: right;
+    }
+
+    .dimension-label.right {
+        right: 30px;  /* 使用固定距离替代transform */
+        text-align: left;
+    }
+    
+    .dimension-value {
+        position: absolute;
+        font-size: 14px;
+        font-weight: bold;
+        transform: translateX(-50%);
+        top: -40px;  /* 上移标签 */
+        background: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        min-width: 100px;  /* 设置最小宽度 */
+        width: auto;  /* 允许自适应 */
+        white-space: nowrap;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# 修改维度条生成函数
+def create_dimension_bar(left_type, right_type, confidence, pred, dim_key):
+    # 获取维度的颜色
+    colors = DIMENSION_COLORS[dim_key]
+    # 获取维度的全称
+    left_full = DIMENSION_NAMES[left_type]
+    right_full = DIMENSION_NAMES[right_type]
+    # 计算指示器位置
+    position = confidence if pred == 1 else (100 - confidence)
+    # 设置渐变色
+    gradient = f"linear-gradient(to right, {colors[0]}, {colors[1]})"
+    
+    html = f"""
+    <div class="dimension-container">
+        <div class="dimension-label left">{left_full}</div>
+        <div class="dimension-bar" style="background: {gradient};">
+            <div class="dimension-value" style="left: {position}%; color: {colors[1] if pred == 1 else colors[0]}">
+                {confidence}% {right_full if pred == 1 else left_full}
+            </div>
+            <div class="dimension-indicator" style="left: {position}%; border-color: {colors[1] if pred == 1 else colors[0]};"></div>
+        </div>
+        <div class="dimension-label right">{right_full}</div>
+    </div>
+    """
+    return html
+
+
 # 添加响应式文本样式
 st.markdown(
     """
@@ -241,7 +374,7 @@ st.markdown(
         display: none;
     }
     * {
-        font-family: "PingFang SC", "Source Sans Pro", -apple-system, BlinkMacSystemFont, sans-serif !important;
+        font-family: "Source Sans Pro", "PingFang SC",  -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
     .mbtitest-page-bigtitle {
         font-size: calc(36px + 0.25vw) !important;
@@ -332,11 +465,38 @@ model_type = st.selectbox(
 # 根据当前选择的模型类型更新占位符文本
 placeholder_text = "请输入至少100个字符的" + ("英文文本..." if model_type == "英文版模型 🇬🇧" else "中英文文本...")
 
+# ... 前面的代码保持不变 ...
+
+# 修改样式定义部分
+st.markdown("""
+    <style>
+    /* 为"开始分析"按钮添加特定样式 */
+    .start-analysis-button {
+        background-color: #4CAF50 !important;
+        color: white !important;
+        font-weight: bold !important;
+        padding: 10px 20px !important;
+        border-radius: 5px !important;
+        border: none !important;
+        transition: all 0.3s ease !important;
+        font-size: 16px !important;
+        width: auto !important;
+        text-align: center !important;
+    }
+
+    .start-analysis-button:hover {
+        background-color: #45a049 !important;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # 开始按钮
-if st.button("开始分析", type="primary"):
+if st.button("开始分析",key="start-analysis",use_container_width=True, disabled=len(user_input.strip()) < 100 or (model_type == "英文版模型 🇬🇧" and contains_chinese(user_input))):
     if len(user_input.strip()) < 100:
         st.error("⚠️ 请输入至少100个字符的文本以确保预测准确性")
+    elif model_type == "英文版模型 🇬🇧" and contains_chinese(user_input):
+        st.error("⚠️ 检测到中文字符！英文版模型仅支持英文输入，请切换到双语版模型或更换为纯英文文本。")
     else:
         with st.spinner("正在分析中，请稍候..."):
             progress_bar = st.progress(0)
@@ -371,24 +531,176 @@ if st.button("开始分析", type="primary"):
                     st.markdown("**预测类型：**")
                     st.markdown(f"**{prediction}**")
 
+                st.session_state.mbti_type = prediction
                 # 显示各维度置信度
-                st.markdown("### 维度分析")
-                cols = st.columns(4)
-                dimensions = ['I/E', 'N/S', 'T/F', 'J/P']
-                for i, (dim, col) in enumerate(zip(dimensions, cols)):
-                    with col:
-                        dim_key = ['IE', 'NS', 'TF', 'JP'][i]
-                        st.metric(
-                            label=dim,
-                            value=f"{confidences[dim_key]}%"
-                        )
+                st.markdown("**维度分析**")
+
+                dimension_pairs = [
+                    ('I', 'E', 'IE'),
+                    ('N', 'S', 'NS'),
+                    ('T', 'F', 'TF'),
+                    ('J', 'P', 'JP')
+                ]
+                
+                # 修改维度分析显示部分
+                for left, right, dim_key in dimension_pairs:
+                    confidence = confidences[dim_key]
+                    pred = predictions[dim_key] if 'predictions' in locals() else (1 if prediction[dimension_pairs.index((left, right, dim_key))] == right else 0)
+                    html = create_dimension_bar(left, right, confidence, pred, dim_key)
+                    st.markdown(html, unsafe_allow_html=True)
 
                 # 显示关键词分析
-                st.markdown("### 关键词分析")
+                # 在显示关键词分析的部分
+                st.markdown("**关键词分析**")
                 st.markdown("对预测结果影响最大的词语：")
+
+                # 使用HTML构建关键词标签
+                keywords_html = '<div class="keyword-container">'
                 for word, _ in top_contributing_words:
-                    st.markdown(f"- {word}")
+                    keywords_html += f'<span class="keyword-tag">{word}</span>'
+                keywords_html += '</div>'
+
+                st.markdown(keywords_html, unsafe_allow_html=True)
+
 
 else:
     placeholder_text = "请输入至少100个字符的" + ("英文文本..." if model_type == "英文版模型 🇬🇧 " else "中英文文本...")
     st.info(f"👆 请在上方输入{placeholder_text}")
+
+# 在样式定义部分添加以下CSS
+st.markdown("""
+    <style>
+    /* ...existing code... */
+    
+    .keyword-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .keyword-tag {
+        background: #f1f3f5;
+        padding: 3px 15px;
+        border-radius: 15px;
+        font-size: 14px;
+        color: #495057;
+        border: 1px solid #e9ecef;
+        transition: all 0.2s ease;
+    }
+    
+    .keyword-tag:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
+
+
+
+
+# ====================================================
+# 底部跳转
+# ====================================================
+
+st.divider()
+col1, col2, col3 = st.columns(3)
+# 修改样式，添加按钮样式
+
+with col1:
+    st.markdown('<p class="column-title">返回首页</p>', unsafe_allow_html=True)
+    
+    with st.container():
+        # 使用 base64 编码显示图片
+        image_base64 = get_image_base64("images/col1.png")
+        st.markdown(f"""
+                    <a href="mbti" target="_self">
+            <div class="card-container" onclick> 
+                <img src="data:image/png;base64,{image_base64}" class="card-image">
+            </div>
+            </a>
+        """, unsafe_allow_html=True)
+        # 使用可见按钮
+        if st.button('← 返回首页', key='card1',type="tertiary"):
+            st.switch_page("1_main.py")
+
+with col2:
+    st.markdown('<p class="column-title">了解 MBTI</p>', unsafe_allow_html=True)
+    
+    with st.container():
+        # 使用 base64 编码显示图片
+        image_base64 = get_image_base64("images/col2.png")
+        st.markdown(f"""
+                    <a href="mbti" target="_self">
+            <div class="card-container" onclick> 
+                <img src="data:image/png;base64,{image_base64}" class="card-image">
+            </div>
+            </a>
+        """, unsafe_allow_html=True)
+        if st.button('← 了解更多', key='card2' ,type="tertiary"):
+            st.switch_page("2_mbti.py")
+
+with col3:
+    st.markdown('<p class="column-title">详细解读</p>', unsafe_allow_html=True)
+    
+    with st.container():
+        # 使用 base64 编码显示图片
+        image_base64 = get_image_base64("images/col3.png")
+        st.markdown(f"""
+                    <a href="result" target="_self">
+            <div class="card-container" onclick> 
+                <img src="data:image/png;base64,{image_base64}" class="card-image">
+            </div>
+            </a>
+        """, unsafe_allow_html=True)
+        # 使用可见按钮
+        if st.button('了解更多 →', key='card3',type="tertiary"):
+            st.switch_page("5_result.py")
+
+st.markdown("""
+    <style>
+    .card-container {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        # padding: 10px;
+        border-radius: 10px;
+        background: white;
+        margin-bottom: 2px;
+        width: 90%;
+    }
+    .card-container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .card-image {
+        width: 100%;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+    # /* 自定义按钮样式 */
+    # .stButton>button {
+    #     background-color: transparent !important;
+    #     color: #1E88E5 !important;
+    #     border: none !important;
+    #     padding: 0 !important;
+    #     font-weight: 500 !important;
+    #     text-align: right !important;
+    #     font-size: calc(10px + 0.2vw) !important;
+    # }
+    # .stButton>button p, .stButton>button span {
+    #     font-size: calc(10px + 0.2vw) !important;  /* 确保按钮内部文字也使用相同大小 */
+    # }
+    # .stButton>button:hover {
+    #     color: #1565C0 !important;
+    #     background: none !important;
+    #     border: none !important;
+    # }
+    .column-title {
+        font-size: calc(14px + 0.3vw) !important;
+        font-weight: bold !important;
+        margin-bottom: calc(8px + 0.25vw) !important;
+        margin-top: calc(-20px - 0.25vw) !important;
+    }
+    </style>
+""", unsafe_allow_html=True)

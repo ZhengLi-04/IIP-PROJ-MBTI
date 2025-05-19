@@ -1,6 +1,8 @@
 import streamlit as st
 import base64
 
+st.logo("full_logo.png", size="large")
+
 # 添加 base64 图片转换函数
 def get_image_base64(image_path):
     with open(image_path, "rb") as image_file:
@@ -15,7 +17,7 @@ st.markdown(
         display: none;
     }
     * {
-        font-family: "PingFang SC", "Source Sans Pro", -apple-system, BlinkMacSystemFont, sans-serif !important;
+        font-family: "Source Sans Pro", "PingFang SC",  -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
     .mbti-page-bigtitle {
         font-size: calc(36px + 0.25vw) !important;

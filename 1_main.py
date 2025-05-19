@@ -8,6 +8,8 @@ def get_image_base64(image_path):
         encoded_string = base64.b64encode(image_file.read()).decode()
     return encoded_string
 
+st.logo("full_logo.png", size="large")
+
 st.markdown("""
     <style>
     [data-testid="stImage"] {
@@ -26,7 +28,7 @@ st.markdown(
         display: none;
     }
     * {
-        font-family: "PingFang SC", "Source Sans Pro", -apple-system, BlinkMacSystemFont, sans-serif !important;
+        font-family: "Source Sans Pro" "PingFang SC",  -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
     /* 响应式文本类 */
     .welcome-title {
