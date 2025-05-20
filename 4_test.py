@@ -8,10 +8,14 @@ from transformers import BertForSequenceClassification, BertTokenizer
 import re
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
 
 st.logo("full_logo.png", size="large")
 
 
+def is_chinese(word):
+    return all('\u4e00' <= char <= '\u9fff' for char in word)
 
 # 在文件开头添加中文检测函数
 def contains_chinese(text):
@@ -20,6 +24,8 @@ def contains_chinese(text):
             return True
     return False
 
+def filter_words(words):
+    return [item for item in words if '我' not in item[0]]  
 # 配置设置
 MODEL_ROOT = "../FuncCodes/predict_code/500 words/models/"  # 模型根目录
 DIMENSIONS = ['IE', 'NS', 'TF', 'JP']  # 四个维度
@@ -38,12 +44,15 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
+
 # 添加双语模型类
 class BilingualMBTITester:
     def __init__(self):
         self.models = {}
         self.tokenizer = None
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self._load_models()
+        self.stopwords = {"我", "我在", "我还", "我是", "我们", "的", "了", "是", "在", "有"}
 
     def _load_models(self):
         model_paths = {
@@ -53,19 +62,20 @@ class BilingualMBTITester:
             'JP': '../FuncCodes/predict_code/chinese & english/models/JP_model'
         }
         
-        # 加载tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained("../FuncCodes/predict_code/chinese & english/xlm-roberta-base/")
-        
-        # 加载模型
-        for dimension, path in model_paths.items():
+        self.models = self._load_all_models(model_paths)
+
+    def _load_all_models(self, model_paths):
+        models = {}
+        for dim, path in model_paths.items():
             model = AutoModelForSequenceClassification.from_pretrained(path, num_labels=2)
-            self.models[dimension] = model.to(DEVICE)
-            print(f"成功加载双语模型 {dimension} 维度")
-        print("所有双语模型加载完成！")
+            model.to(self.device)
+            models[dim] = model
+            print(f"成功加载双语模型 {dim} 维度")
+        return models
 
     def predict(self, text):
-        processed_text = preprocess_text(text)
-        
+        processed_text = self._preprocess_text(text)
         encoding = self.tokenizer(
             processed_text,
             add_special_tokens=True,
@@ -75,11 +85,11 @@ class BilingualMBTITester:
             return_tensors='pt'
         )
 
-        input_ids = encoding['input_ids'].to(DEVICE)
-        attention_mask = encoding['attention_mask'].to(DEVICE)
+        input_ids = encoding['input_ids'].to(self.device)
+        attention_mask = encoding['attention_mask'].to(self.device)
 
-        predictions = {}
-        confidences = {}
+        dimension_results = {}
+        dimension_probs = {}
         
         for dim, model in self.models.items():
             model.eval()
@@ -88,43 +98,73 @@ class BilingualMBTITester:
                 logits = outputs.logits
                 probs = torch.softmax(logits, dim=1)
                 pred = torch.argmax(logits, dim=1).item()
-                confidence = int(probs[0][pred].item() * 100)
-                
-                predictions[dim] = pred
-                confidences[dim] = confidence
+                dimension_results[dim] = pred
+                dimension_probs[dim] = int(probs[0][pred].item() * 100)
 
-        # 获取词语贡献度
-        top_contributing_words = self._get_embedding_contributions(input_ids, attention_mask)
+        mbti_type = self._format_mbti(dimension_results)
+        # formatted_output = self._format_output(mbti_type, dimension_results, dimension_probs)
+        top_contributing_words = self.get_embedding_contributions(input_ids, attention_mask)
         
-        return self._format_mbti(predictions), confidences, top_contributing_words
+        return mbti_type, dimension_probs, top_contributing_words
 
-    def _get_embedding_contributions(self, input_ids, attention_mask):
+    def _preprocess_text(self, text):
+        text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
+        text = re.sub(r'@\w+', '', text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+
+    def _format_mbti(self, preds):
+        return ("I" if preds['IE'] == 0 else "E") + \
+               ("N" if preds['NS'] == 0 else "S") + \
+               ("T" if preds['TF'] == 0 else "F") + \
+               ("J" if preds['JP'] == 0 else "P")
+
+    # def _format_output(self, mbti_type, results, probs):
+    #     output = f"预测的MBTI类型: {mbti_type}；"
+    #     output += f"{'I' if results['IE']==0 else 'E'}（置信度 {probs['IE']}%）"
+    #     output += f"{'N' if results['NS']==0 else 'S'}（置信度 {probs['NS']}%）" 
+    #     output += f"{'T' if results['TF']==0 else 'F'}（置信度 {probs['TF']}%）"
+    #     output += f"{'J' if results['JP']==0 else 'P'}（置信度 {probs['JP']}%）"
+    #     return output
+
+    def compute_word_importance(self, input_ids, model):
+        embedding_layer = model.get_input_embeddings()
+        embeddings = embedding_layer(input_ids)
+        
         word_contributions = {}
         words = self.tokenizer.convert_ids_to_tokens(input_ids.squeeze().cpu().numpy())
         
-        embedding_layer = self.models['IE'].get_input_embeddings()
-        embeddings = embedding_layer(input_ids)
-        
         for i, word in enumerate(words):
-            if (word not in self.tokenizer.all_special_tokens and 
-                "我" not in word and 
-                not (len(word) <= 3 and word.startswith("的")) and 
-                len(word) >= 2):
-                word_embedding = embeddings[0, i].cpu().detach().numpy()
-                importance = np.linalg.norm(word_embedding)
-                word_contributions[word] = importance
-        
-        return sorted(word_contributions.items(), key=lambda x: x[1], reverse=True)[:5]
+            if word in self.tokenizer.all_special_tokens:
+                continue
+                
+            clean_word = word[1:] if word.startswith("▁") else word
+            
+            # 应用新的过滤条件
+            if (
+                len(clean_word) < 2 or
+                "我" in clean_word or
+                (len(clean_word) <= 3 and clean_word.startswith("的")) or
+                clean_word in self.stopwords
+            ):
+                continue
+                
+            word_embedding = embeddings[0, i].cpu().detach().numpy()
+            importance = np.linalg.norm(word_embedding)
+            word_contributions[clean_word] = word_contributions.get(clean_word, 0) + importance
+            
+        return word_contributions
 
-    def _format_mbti(self, predictions):
-        type_map = {
-            'IE': {0: 'I', 1: 'E'},
-            'NS': {0: 'N', 1: 'S'},
-            'TF': {0: 'T', 1: 'F'},
-            'JP': {0: 'J', 1: 'P'}
-        }
-        return ''.join([type_map[dim][pred] for dim, pred in predictions.items()])
-    
+    def get_embedding_contributions(self, input_ids, attention_mask):
+        total_contributions = {}
+        for dim, model in self.models.items():
+            contributions = self.compute_word_importance(input_ids, model)
+            for word, score in contributions.items():
+                total_contributions[word] = total_contributions.get(word, 0) + score
+                
+        top_30 = sorted(total_contributions.items(), key=lambda x: x[1], reverse=True)[:30]
+        return top_30
+
 # MBTITester 类定义
 class MBTITester:
     def __init__(self):
@@ -209,9 +249,12 @@ class MBTITester:
                 total_word_contributions[word] += contribution
         return total_word_contributions
 
+    # 修改 MBTITester._get_top_contributing_words()
     def _get_top_contributing_words(self, total_word_contributions, top_n=5):
-        top_contributing_words = sorted(total_word_contributions.items(), key=lambda item: item[1], reverse=True)[:top_n]
-        return top_contributing_words
+        top_contributing_words = sorted(total_word_contributions.items(), key=lambda item: item[1], reverse=True)
+        # 过滤含“我”的词
+        top_contributing_words = filter_words(top_contributing_words)
+        return top_contributing_words[:top_n]
 
     def _format_mbti(self, predictions):
         type_map = {
@@ -545,22 +588,65 @@ if st.button("开始分析",key="start-analysis",use_container_width=True, disab
                 # 修改维度分析显示部分
                 for left, right, dim_key in dimension_pairs:
                     confidence = confidences[dim_key]
-                    pred = predictions[dim_key] if 'predictions' in locals() else (1 if prediction[dimension_pairs.index((left, right, dim_key))] == right else 0)
+                    pred = 1 if prediction[dimension_pairs.index((left, right, dim_key))] == right else 0
                     html = create_dimension_bar(left, right, confidence, pred, dim_key)
                     st.markdown(html, unsafe_allow_html=True)
 
-                # 显示关键词分析
-                # 在显示关键词分析的部分
-                st.markdown("**关键词分析**")
-                st.markdown("对预测结果影响最大的词语：")
+                
+                if model_type == "英文版模型 🇬🇧":
+                    # 显示关键词分析
+                    # 在显示关键词分析的部分
+                    st.markdown("**关键词分析**")
+                    st.markdown("对预测结果影响最大的词语：")
 
-                # 使用HTML构建关键词标签
-                keywords_html = '<div class="keyword-container">'
-                for word, _ in top_contributing_words:
-                    keywords_html += f'<span class="keyword-tag">{word}</span>'
-                keywords_html += '</div>'
+                    # 使用HTML构建关键词标签
+                    keywords_html = '<div class="keyword-container">'
+                    for word, _ in top_contributing_words:
+                        keywords_html += f'<span class="keyword-tag">{word}</span>'
+                    keywords_html += '</div>'
 
-                st.markdown(keywords_html, unsafe_allow_html=True)
+                    st.markdown(keywords_html, unsafe_allow_html=True)
+                else:
+                    # 替换原有的关键词分析部分
+                    st.markdown("**关键词词云分析**")
+                    st.markdown("对预测结果影响最大的词语：")
+                    
+                    col1, col2, col3 = st.columns([1, 8, 1])
+
+                    with col2:
+                        st.markdown("<div style='margin-bottom:70px;'></div>", unsafe_allow_html=True)
+                        with st.container():
+                            # 生成词云
+                            word_freq = {word: contri for word, contri in top_contributing_words}
+                            wordcloud = WordCloud(
+                                font_path="/System/Library/Fonts/Hiragino Sans GB.ttc",
+                                width=500,  # 适当缩小画布尺寸
+                                height=200,
+                                background_color='white',
+                                scale=0.9
+                            ).generate_from_frequencies(word_freq)
+                        
+                            plt.figure(figsize=(8, 4), dpi=300)  # 调整DPI降低分辨率
+                            plt.imshow(wordcloud, interpolation='bilinear')
+                            plt.axis("off")
+                            st.pyplot(plt, use_container_width=True)  # 使用容器宽度自适应
+                            plt.close()
+
+
+                # # 生成词云
+                # word_freq = {word: contri for word, contri in top_contributing_words}
+                # wordcloud = WordCloud(
+                #     font_path="/System/Library/Fonts/Hiragino Sans GB.ttc",  # 中文字体路径
+                #     width=800,
+                #     height=400,
+                #     background_color='white'
+                # ).generate_from_frequencies(word_freq)
+                
+                # # 显示词云
+                # plt.figure(figsize=(10, 5))
+                # plt.imshow(wordcloud, interpolation='bilinear')
+                # plt.axis("off")
+                # st.pyplot(plt)
 
 
 else:
