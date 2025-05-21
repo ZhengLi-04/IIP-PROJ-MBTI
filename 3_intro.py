@@ -20,6 +20,38 @@ st.markdown(
     button[kind="header"] {
         display: none;
     }
+    .dataframe td {
+    white-space: normal !important;
+    height: auto !important;
+    padding: 8px 12px !important;
+    }
+    table {
+        font-size: calc(10px + 0.15vw) !important;
+    }
+    th {
+        font-size: calc(10px + 0.15vw) !important;
+        padding: 6px 10px !important;
+        background: #f8f9fa !important;
+    }
+    td {
+        font-size: calc(11px + 0.15vw) !important;
+        padding: 5px 10px !important;
+    }
+    * {
+        font-family: "Source Sans Pro", "PingFang SC",  -apple-system, BlinkMacSystemFont, sans-serif !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# 添加响应式文本样式
+st.markdown(
+    """
+    <style>
+    button[kind="header"] {
+        display: none;
+    }
     * {
         font-family: "Source Sans Pro", "PingFang SC",  -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
@@ -99,50 +131,60 @@ st.caption("🚀 MBTInsight 是一个基于文本的 MBTI 自动预测平台，�
 tab1, tab2 = st.tabs(["英文版模型 🇬🇧 ", "双语版模型 🇨🇳 🇬🇧"])
 
 
+
+
 # ==========================================================
 # 英文版模型部分
 # ==========================================================
 with tab1:
     st.markdown('<p class="intro-page-title">📊 数据集说明</p>', unsafe_allow_html=True)
     st.markdown('<p class="intro-page-text">训练集共106067条数据，测试集共8675条数据。</p>', unsafe_allow_html=True)
-    # 原始数据
-    train_counts = {
-        "INTP": 24961, "INTJ": 22427, "INFJ": 14963, "INFP": 12134,
-        "ENTP": 11725, "ENFP": 6167,  "ISTP": 3424,  "ENTJ": 2955,
-        "ESTP": 1986,  "ENFJ": 1534,  "ISTJ": 1243,  "ISFP": 875,
-        "ISFJ": 650,   "ESTJ": 482,   "ESFP": 360,   "ESFJ": 181
-    }
-    test_counts = {
-        "INFP": 1832,  "INFJ": 1470,  "INTP": 1304,  "INTJ": 1091,
-        "ENTP": 685,   "ENFP": 675,   "ISTP": 337,   "ISFP": 271,
-        "ENTJ": 231,   "ISTJ": 205,   "ENFJ": 190,   "ISFJ": 166,
-        "ESTP": 89,    "ESFP": 48,    "ESFJ": 42,    "ESTJ": 39
-    }
+    # # 原始数据
+    # train_counts = {
+    #     "INTP": 24961, "INTJ": 22427, "INFJ": 14963, "INFP": 12134,
+    #     "ENTP": 11725, "ENFP": 6167,  "ISTP": 3424,  "ENTJ": 2955,
+    #     "ESTP": 1986,  "ENFJ": 1534,  "ISTJ": 1243,  "ISFP": 875,
+    #     "ISFJ": 650,   "ESTJ": 482,   "ESFP": 360,   "ESFJ": 181
+    # }
+    # test_counts = {
+    #     "INFP": 1832,  "INFJ": 1470,  "INTP": 1304,  "INTJ": 1091,
+    #     "ENTP": 685,   "ENFP": 675,   "ISTP": 337,   "ISFP": 271,
+    #     "ENTJ": 231,   "ISTJ": 205,   "ENFJ": 190,   "ISFJ": 166,
+    #     "ESTP": 89,    "ESFP": 48,    "ESFJ": 42,    "ESTJ": 39
+    # }
 
-    # 转成长表格格式
-    df = (
-        pd.DataFrame({
-            "Train": pd.Series(train_counts),
-            "Test":  pd.Series(test_counts),
-        })
-        .reset_index().melt(id_vars="index", var_name="Dataset", value_name="Count")
-        .rename(columns={"index": "Type"})
-    )
+    # # 转成长表格格式
+    # df = (
+    #     pd.DataFrame({
+    #         "Train": pd.Series(train_counts),
+    #         "Test":  pd.Series(test_counts),
+    #     })
+    #     .reset_index().melt(id_vars="index", var_name="Dataset", value_name="Count")
+    #     .rename(columns={"index": "Type"})
+    # )
 
-    # 如果你想要在同一张图中并排而非分面，去掉 column，改为 x 的二级分组：
-    chart = (
-        alt.Chart(df)
-        .mark_bar()
-        .encode(
-            x=alt.X("Type:N", sort=list(train_counts.keys()), title="MBTI 类型"),
-            xOffset="Dataset:N",
-            y=alt.Y("Count:Q", title="数量"),
-            color=alt.Color("Dataset:N", scale=alt.Scale(range=["#ff7f0e","#1f77b4"]))
-        )
-        .properties(width=600, height=350)
-    )
+    # # 如果你想要在同一张图中并排而非分面，去掉 column，改为 x 的二级分组：
+    # chart = (
+    #     alt.Chart(df)
+    #     .mark_bar()
+    #     .encode(
+    #         x=alt.X("Type:N", sort=list(train_counts.keys()), title="MBTI 类型"),
+    #         xOffset="Dataset:N",
+    #         y=alt.Y("Count:Q", title="数量"),
+    #         color=alt.Color("Dataset:N", scale=alt.Scale(range=["#ff7f0e","#1f77b4"]))
+    #     )
+    #     .properties(width=600, height=350)
+    # )
 
-    st.altair_chart(chart, use_container_width=True)
+    # st.altair_chart(chart, use_container_width=True)
+    sample_data = pd.DataFrame({
+        "字段名称": ["type", "posts"],
+        "字段说明": ["MBTI人格类型（16种）", "500个英文单词"],
+        "示例": ["INTP/INTJ/INFJ...", "loose overthinking ruin friendship insecurity learn ..."]
+    })
+    
+    st.caption("📋 数据集字段说明")
+    st.table(sample_data.style.hide(axis="index"))
 
     st.markdown('<p class="intro-page-title">🔮 模型介绍</p>', unsafe_allow_html=True)
     st.markdown('<p class="intro-page-text">这里是模型介绍</p>', unsafe_allow_html=True)
@@ -192,36 +234,45 @@ with tab2:
     st.markdown('<p class="intro-page-title">📊 数据集说明</p>', unsafe_allow_html=True)
     st.markdown('<p class="intro-page-text">数据集共10544条数据。</p>', unsafe_allow_html=True)
     
-    # 修改为新的数据
-    counts = {
-        "ESFP": 747, "ESFJ": 729, "ESTP": 717, "ESTJ": 710,
-        "ENFP": 702, "ENTJ": 700, "ISFP": 666, "ISFJ": 664,
-        "INFP": 652, "ENTP": 647, "ENFJ": 633, "ISTP": 626,
-        "ISTJ": 600, "INTP": 598, "INTJ": 591, "INFJ": 562
-    }
+    sample_data = pd.DataFrame({
+        "字段名称": ["type", "posts"],
+        "字段说明": ["MBTI人格类型（16种）", "用户的一段中文/英文自述"],
+        "示例": ["INTP/INTJ/INFJ...", "我为自己快速适应新环境的能力感到自豪。我在充满活力的环境中发挥出色，并喜欢冒险..."]
+    })
+    
+    st.caption("📋 数据集字段说明")
+    st.table(sample_data.style.hide(axis="index"))
 
-    # 转成长表格格式
-    df = (
-        pd.DataFrame({
-            "Count": pd.Series(counts),
-        })
-        .reset_index()
-        .rename(columns={"index": "Type"})
-    )
+    # # 修改为新的数据
+    # counts = {
+    #     "ESFP": 747, "ESFJ": 729, "ESTP": 717, "ESTJ": 710,
+    #     "ENFP": 702, "ENTJ": 700, "ISFP": 666, "ISFJ": 664,
+    #     "INFP": 652, "ENTP": 647, "ENFJ": 633, "ISTP": 626,
+    #     "ISTJ": 600, "INTP": 598, "INTJ": 591, "INFJ": 562
+    # }
 
-    # 绘制条形图
-    chart = (
-        alt.Chart(df)
-        .mark_bar()
-        .encode(
-            x=alt.X("Type:N", sort=list(counts.keys()), title="MBTI 类型"),
-            y=alt.Y("Count:Q", title="数量"),
-            color=alt.value("#1f77b4")  # 使用单一颜色
-        )
-        .properties(width=600, height=350)
-    )
+    # # 转成长表格格式
+    # df = (
+    #     pd.DataFrame({
+    #         "Count": pd.Series(counts),
+    #     })
+    #     .reset_index()
+    #     .rename(columns={"index": "Type"})
+    # )
 
-    st.altair_chart(chart, use_container_width=True)
+    # # 绘制条形图
+    # chart = (
+    #     alt.Chart(df)
+    #     .mark_bar()
+    #     .encode(
+    #         x=alt.X("Type:N", sort=list(counts.keys()), title="MBTI 类型"),
+    #         y=alt.Y("Count:Q", title="数量"),
+    #         color=alt.value("#1f77b4")  # 使用单一颜色
+    #     )
+    #     .properties(width=600, height=350)
+    # )
+
+    # st.altair_chart(chart, use_container_width=True)
 
     # ...rest of the code...
 
