@@ -145,7 +145,8 @@ class BilingualMBTITester:
                 len(clean_word) < 2 or
                 "我" in clean_word or
                 (len(clean_word) <= 3 and clean_word.startswith("的")) or
-                clean_word in self.stopwords
+                clean_word in self.stopwords 
+                # (len(clean_word) < 3 and re.fullmatch(r'^[a-zA-Z]+$', clean_word))  # 新增英文短词过滤
             ):
                 continue
                 
@@ -170,6 +171,22 @@ class MBTITester:
     def __init__(self):
         self.models = {}
         self.tokenizer = None
+        self.stopwords = set([
+            'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours', 
+            'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself', 
+            'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 
+            'who', 'whom', 'this', 'that', 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 
+            'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 
+            'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 
+            'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 
+            'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 
+            'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 
+            'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 
+            'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', 'should', 'now', 'd', 
+            'll', 'm', 'o', 're', 've', 'y', 'ain', 'aren', 'couldn', 'didn', 'doesn', 'hadn', 'hasn', 
+            'haven', 'isn', 'ma', 'mightn', 'mustn', 'needn', 'shan', 'shouldn', 'wasn', 'weren', 'won', 
+            'wouldn','type','types','lot','people'
+        ])
         self._load_models()
 
     def _load_single_model(self, dimension):
@@ -230,12 +247,21 @@ class MBTITester:
     def _compute_attention_contributions(self, attention_weights, encoding):
         tokens = self.tokenizer.convert_ids_to_tokens(encoding['input_ids'][0].cpu().numpy())
         tokens = [token for token in tokens if token not in ['[CLS]', '[SEP]', '[PAD]']]
-        word_contributions = {token: 0 for token in tokens}
+        
+        # 添加与predict.py一致的过滤逻辑
+        meaningful_tokens = [
+            token for token in tokens 
+            if token.lower() not in self.stopwords 
+            and not token.startswith('##') 
+            and len(token) >= 3
+        ]
+        
+        word_contributions = {token: 0 for token in meaningful_tokens}
 
         for layer in range(len(attention_weights)):
             for head in range(attention_weights[layer].shape[1]):
                 attention_map = attention_weights[layer][0, head].detach().cpu().numpy()
-                for i, token in enumerate(tokens):
+                for i, token in enumerate(meaningful_tokens):
                     word_contributions[token] += np.sum(attention_map[i, :])
         
         return word_contributions
@@ -250,11 +276,17 @@ class MBTITester:
         return total_word_contributions
 
     # 修改 MBTITester._get_top_contributing_words()
-    def _get_top_contributing_words(self, total_word_contributions, top_n=5):
-        top_contributing_words = sorted(total_word_contributions.items(), key=lambda item: item[1], reverse=True)
-        # 过滤含“我”的词
-        top_contributing_words = filter_words(top_contributing_words)
-        return top_contributing_words[:top_n]
+    def _get_top_contributing_words(self, total_word_contributions, top_n=30):  # 修改top_n为30
+        return sorted(total_word_contributions.items(), key=lambda item: item[1], reverse=True)[:top_n]
+
+    # 添加与predict.py相同的词云生成方法
+    def generate_wordcloud(self, top_contributing_words):
+        word_freq = {word: contribution for word, contribution in top_contributing_words}
+        wordcloud = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(word_freq)
+        plt.figure(figsize=(10, 6))
+        plt.imshow(wordcloud, interpolation='bilinear')
+        plt.axis("off")
+        return plt
 
     def _format_mbti(self, predictions):
         type_map = {
@@ -594,18 +626,16 @@ if st.button("开始分析",key="start-analysis",use_container_width=True, disab
 
                 
                 if model_type == "英文版模型 🇬🇧":
-                    # 显示关键词分析
-                    # 在显示关键词分析的部分
-                    st.markdown("**关键词分析**")
+                    st.markdown("**关键词词云分析**")
                     st.markdown("对预测结果影响最大的词语：")
-
-                    # 使用HTML构建关键词标签
-                    keywords_html = '<div class="keyword-container">'
-                    for word, _ in top_contributing_words:
-                        keywords_html += f'<span class="keyword-tag">{word}</span>'
-                    keywords_html += '</div>'
-
-                    st.markdown(keywords_html, unsafe_allow_html=True)
+                    
+                    col1, col2, col3 = st.columns([1, 8, 1])
+                    with col2:
+                        st.markdown("<div style='margin-bottom:70px;'></div>", unsafe_allow_html=True)
+                        with st.container():
+                            plt = st.session_state.tester.generate_wordcloud(top_contributing_words)
+                            st.pyplot(plt)
+                            plt.close()
                 else:
                     # 替换原有的关键词分析部分
                     st.markdown("**关键词词云分析**")
@@ -631,23 +661,6 @@ if st.button("开始分析",key="start-analysis",use_container_width=True, disab
                             plt.axis("off")
                             st.pyplot(plt, use_container_width=True)  # 使用容器宽度自适应
                             plt.close()
-
-
-                # # 生成词云
-                # word_freq = {word: contri for word, contri in top_contributing_words}
-                # wordcloud = WordCloud(
-                #     font_path="/System/Library/Fonts/Hiragino Sans GB.ttc",  # 中文字体路径
-                #     width=800,
-                #     height=400,
-                #     background_color='white'
-                # ).generate_from_frequencies(word_freq)
-                
-                # # 显示词云
-                # plt.figure(figsize=(10, 5))
-                # plt.imshow(wordcloud, interpolation='bilinear')
-                # plt.axis("off")
-                # st.pyplot(plt)
-
 
 else:
     placeholder_text = "请输入至少100个字符的" + ("英文文本..." if model_type == "英文版模型 🇬🇧 " else "中英文文本...")
