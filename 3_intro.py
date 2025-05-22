@@ -100,6 +100,13 @@ st.markdown(
         margin-bottom: 1px !important;
         text-align: center;
     }
+    .intro-page-typetitle-2 {
+        font-size: calc(10px + 0.25vw) !important;
+        font-weight: bold !important;
+        color: #333;
+        margin-bottom: 1px !important;
+        text-align: center;
+    }
     .intro-page-typetitle2 {
         font-size: calc(13px + 0.25vw) !important;
         font-weight: bold !important;
@@ -187,7 +194,31 @@ with tab1:
     st.table(sample_data.style.hide(axis="index"))
 
     st.markdown('<p class="intro-page-title">🔮 模型介绍</p>', unsafe_allow_html=True)
-    st.markdown('<p class="intro-page-text">这里是模型介绍</p>', unsafe_allow_html=True)
+    st.markdown('<p class="intro-page-text">使用预训练的BERT模型作为基础，在BERT的基础上添加了一个全连接层，用于进行二分类任务。每个维度的分类任务都使用一个独立的模型进行训练，从而将复杂的16分类问题转换为4个二分类问题。</p>', unsafe_allow_html=True)
+
+    st.markdown('<p class="intro-page-title">📈 模型效果</p>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        image_base64 = get_image_base64("images/eng_train_acc.png")
+        st.markdown(f"""
+            <div class="intro-card word-cloud-card">
+                <p class="intro-page-typetitle">验证集上的准确率</p>
+                <div class="intro-card-image">
+                    <img src="data:image/png;base64,{image_base64}" style="width: 100%; margin: auto;">
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        image_base64 = get_image_base64("images/eng_test_acc.png")
+        st.markdown(f"""
+            <div class="intro-card word-cloud-card">
+                <p class="intro-page-typetitle">测试集上的准确率</p>
+                <div class="intro-card-image">
+                    <img src="data:image/png;base64,{image_base64}" style="width: 100%; margin: auto;">
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
     st.markdown('<p class="intro-page-title">🧐 高频词分析</p>', unsafe_allow_html=True)
 
@@ -237,7 +268,7 @@ with tab2:
     sample_data = pd.DataFrame({
         "字段名称": ["type", "posts"],
         "字段说明": ["MBTI人格类型（16种）", "用户的一段中文/英文自述"],
-        "示例": ["INTP/INTJ/INFJ...", "我为自己快速适应新环境的能力感到自豪。我在充满活力的环境中发挥出色，并喜欢冒险..."]
+        "示例": ["INTP/INTJ/INFJ...", "我为自己快速适应新环境的能力感到自豪。我在充满活力的环境中发挥出色..."]
     })
     
     st.caption("📋 数据集字段说明")
@@ -277,7 +308,54 @@ with tab2:
     # ...rest of the code...
 
     st.markdown('<p class="intro-page-title">🔮 模型介绍</p>', unsafe_allow_html=True)
-    st.markdown('<p class="intro-page-text">这里是模型介绍</p>', unsafe_allow_html=True)
+    st.markdown('<p class="intro-page-text">使用 langid 库对输入文本进行自动语言检测，识别是否为英文、中文等，为后续分析和过滤低置信语言样本提供依据。选用 XLM-Roberta（跨语言预训练模型）作为主干，具备自动识别语言、跨语言共享语义、中英混杂处理能力强等能力。</p>', unsafe_allow_html=True)
+
+    st.markdown('<p class="intro-page-title">📈 模型效果</p>', unsafe_allow_html=True)
+
+    col1, col2,col3,col4 = st.columns(4)
+    with col1:
+        image_base64 = get_image_base64("images/cheng_train_ie.png")
+        st.markdown(f"""
+            <div class="intro-card word-cloud-card">
+                <p class="intro-page-typetitle-2">验证集上I/E维度混淆矩阵</p>
+                <div class="intro-card-image">
+                    <img src="data:image/png;base64,{image_base64}" style="width: 100%; margin: auto;">
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        image_base64 = get_image_base64("images/cheng_train_ns.png")
+        st.markdown(f"""
+            <div class="intro-card word-cloud-card">
+                <p class="intro-page-typetitle-2">验证集上N/S维度混淆矩阵</p>
+                <div class="intro-card-image">
+                    <img src="data:image/png;base64,{image_base64}" style="width: 100%; margin: auto;">
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        image_base64 = get_image_base64("images/cheng_train_tf.png")
+        st.markdown(f"""
+            <div class="intro-card word-cloud-card">
+                <p class="intro-page-typetitle-2">验证集上T/F维度混淆矩阵</p>
+                <div class="intro-card-image">
+                    <img src="data:image/png;base64,{image_base64}" style="width: 100%; margin: auto;">
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with col4:
+        image_base64 = get_image_base64("images/cheng_train_jp.png")
+        st.markdown(f"""
+            <div class="intro-card word-cloud-card">
+                <p class="intro-page-typetitle-2">验证集上J/P维度混淆矩阵</p>
+                <div class="intro-card-image">
+                    <img src="data:image/png;base64,{image_base64}" style="width: 100%; margin: auto;">
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
     st.markdown('<p class="intro-page-title">🧐 高频词分析</p>', unsafe_allow_html=True)
 
