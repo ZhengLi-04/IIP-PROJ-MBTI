@@ -52,7 +52,20 @@ class BilingualMBTITester:
         self.tokenizer = None
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self._load_models()
-        self.stopwords = {"我", "我在", "我还", "我是", "我们", "的", "了", "是", "在", "有"}
+        self.stopwords = {"我", "我在", "我还", "我是", "我们", "的", "了", "是", "在", "有",'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours', 
+            'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself', 
+            'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 
+            'who', 'whom', 'this', 'that', 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 
+            'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 
+            'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 
+            'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 
+            'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 
+            'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 
+            'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 
+            'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', 'should', 'now', 'd', 
+            'll', 'm', 'o', 're', 've', 'y', 'ain', 'aren', 'couldn', 'didn', 'doesn', 'hadn', 'hasn', 
+            'haven', 'isn', 'ma', 'mightn', 'mustn', 'needn', 'shan', 'shouldn', 'wasn', 'weren', 'won', 
+            'wouldn','type','types','lot','people','intui','anal','ing','ize','ise','ity','vit'}
 
     def _load_models(self):
         model_paths = {
@@ -139,14 +152,15 @@ class BilingualMBTITester:
                 continue
                 
             clean_word = word[1:] if word.startswith("▁") else word
-            
+    
+            clean_word = clean_word.lower()
             # 应用新的过滤条件
             if (
                 len(clean_word) < 2 or
                 "我" in clean_word or
                 (len(clean_word) <= 3 and clean_word.startswith("的")) or
-                clean_word in self.stopwords 
-                # (len(clean_word) < 3 and re.fullmatch(r'^[a-zA-Z]+$', clean_word))  # 新增英文短词过滤
+                clean_word in self.stopwords or
+                (len(clean_word) < 3 and re.fullmatch(r'^[a-zA-Z]+$', clean_word))  # 新增英文短词过滤
             ):
                 continue
                 
@@ -646,20 +660,48 @@ if st.button("开始分析",key="start-analysis",use_container_width=True, disab
                     with col2:
                         st.markdown("<div style='margin-bottom:70px;'></div>", unsafe_allow_html=True)
                         with st.container():
-                            # 生成词云
-                            word_freq = {word: contri for word, contri in top_contributing_words}
+                            def is_valid_word(word):
+                                lower_word = word.lower()
+                                return (
+                                    len(word) >= 2 and
+                                    "我" not in word and
+                                    not (len(word) <= 3 and word.startswith("的")) and
+                                    lower_word not in st.session_state.bilingual_tester.stopwords and
+                                    not (len(word) < 3 and re.fullmatch(r'^[a-zA-Z]+$', word))
+                                )
+
+                            # 转换过滤后的列表为字典
+                            filtered_words = [
+                                (word, contri) 
+                                for word, contri in top_contributing_words 
+                                if is_valid_word(word)
+                            ]
+                            word_freq = {}
+                            word_freq = dict(filtered_words)  # 添加这行转换
+
+                            word_freq = dict(filtered_words)  # 添加这行转换
+
+                            # 添加最终停用词过滤
+                            stopwords_lower = {word.lower() for word in st.session_state.bilingual_tester.stopwords}
+                            word_freq = {
+                                word: score 
+                                for word, score in word_freq.items() 
+                                if word.lower() not in stopwords_lower
+                            }
+
                             wordcloud = WordCloud(
                                 font_path="/System/Library/Fonts/Hiragino Sans GB.ttc",
-                                width=500,  # 适当缩小画布尺寸
+                                width=500,
                                 height=200,
                                 background_color='white',
                                 scale=0.9
                             ).generate_from_frequencies(word_freq)
-                        
-                            plt.figure(figsize=(8, 4), dpi=300)  # 调整DPI降低分辨率
+
+
+                            plt.figure(figsize=(8, 4), dpi=300)
                             plt.imshow(wordcloud, interpolation='bilinear')
                             plt.axis("off")
-                            st.pyplot(plt, use_container_width=True)  # 使用容器宽度自适应
+                            st.pyplot(plt, use_container_width=True)
                             plt.close()
 
 else:
