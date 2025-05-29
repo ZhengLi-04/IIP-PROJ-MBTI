@@ -1,1 +1,1 @@
-# IIP-PROJ-MBTI
+# MBTInsight——基于文本的MBTI预测系统
